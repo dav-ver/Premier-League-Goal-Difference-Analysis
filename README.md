@@ -2,3 +2,4 @@
 A bunch of investigations into goal difference trends and records in the Premier League era.
 This includes:
 - Maximum goal diff gain or loss over given number of games
+Best_5_Game_GD_Streak.png
