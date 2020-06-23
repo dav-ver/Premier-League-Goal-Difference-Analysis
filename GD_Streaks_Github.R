@@ -1,17 +1,16 @@
 #What is the most goal difference gained or lost in a 5 game streak in the PL?
 
-#The output could be neatened but this basically works
-#Need to have read in data from elsewhere first
-#all_dataframes = list(GD_Evolution_08_09, GD_Evolution_09_10, GD_Evolution_10_11, GD_Evolution_11_12, GD_Evolution_12_13, GD_Evolution_13_14, GD_Evolution_14_15, GD_Evolution_15_16, GD_Evolution_16_17, GD_Evolution_17_18)
+#Two ways to read in necessary data
+#1. On my own PC, this works:
+source("~/OneDrive (old PC)/Documents/Running GD Script.R")
 
+#2. On any PC, read in from my Github repo:
 library(repmis)
-
 source_data("https://github.com/dav-ver/Premier-League-Goal-Difference-Analysis/blob/master/GD_Evolution_All_Seasons.RData?raw=true")
 
 
 Max_Added_Value = 0
 Best_Streak = c()
-print("BEST STREAKS:")
 for(year in all_dataframes){
   for(i in 2:21) {
     #starts with 6 but this is fine as there is a week 0 in the frames
@@ -30,13 +29,13 @@ for(year in all_dataframes){
     }
   }
 }
+print("BEST STREAKS:")
 print(Best_Streak)
 
 
 
 Max_Lost_Value = 0
 Worst_Streak = c()
-print("WORST STREAKS:")
 for(year in all_dataframes){
   for(i in 2:21) {
     #starts with 6 but this is fine as there is a week 0 in the frames
@@ -55,4 +54,5 @@ for(year in all_dataframes){
     }
   }
 }
+print("WORST STREAKS:")
 print(Worst_Streak)
