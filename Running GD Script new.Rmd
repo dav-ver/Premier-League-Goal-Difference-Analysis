@@ -1,0 +1,426 @@
+---
+title: "Untitled"
+author: "David Verry"
+date: "29 August 2021"
+output: html_document
+---
+
+## READ IN LIBRARIES
+
+```{r}
+library(tidyverse)
+library(gganimate)
+library(ggrepel)
+```
+
+
+## READ IN DATA
+
+```{r}
+test_20_21_raw = read.csv("http://www.football-data.co.uk/mmz4281/9394/E0.csv")
+
+```
+
+## READ AND PROCESS DATA
+
+```{r, warning=FALSE, message=FALSE}
+
+#http://www.football-data.co.uk/englandm.php
+all_dataframes = list()
+first_year = 1994
+while (first_year < 2020) {
+  first_year = first_year+1
+  print(first_year)
+  second_year = first_year+1
+  first_year_trimmed = str_sub(as.character(first_year), 3, 4)
+  second_year_trimmed = str_sub(as.character(second_year), 3, 4)
+  url = paste("http://www.football-data.co.uk/mmz4281/", 
+              first_year_trimmed, second_year_trimmed, "/E0.csv", sep = "")
+  data = read_csv(url)%>%
+    filter(Date != "") %>%
+    select(1:10) %>%
+    pivot_longer(cols = c(HomeTeam, AwayTeam), names_to = "venue", values_to = "Team") %>%
+    mutate(goal_difference = case_when(venue == "HomeTeam" ~ (FTHG - FTAG),
+                                       venue == "AwayTeam" ~ (FTAG - FTHG)),
+           Team = paste(Team, first_year_trimmed, second_year_trimmed,
+                        sep = "_")) %>%
+    group_by(Team) %>%
+    mutate(Gameweek = row_number(),
+           goal_difference_running = cumsum(goal_difference)) %>%
+    select(Gameweek, Team, goal_difference_running) %>%
+    pivot_wider(id_cols = Gameweek, names_from = Team, values_from = goal_difference_running)
+  
+  #assign(paste("GD_Evolution", first_year_trimmed, second_year_trimmed, sep="_"), data)
+  season_name = paste(first_year, second_year_trimmed, sep = "-")
+  all_dataframes = c(all_dataframes, season_name = list(data))
+  names(all_dataframes)[length(all_dataframes)] = season_name
+  
+  }
+  
+```
+
+
+## COUNT AND ORDER ALL CHASES BETWEEN ALL TEAMS IN PL HISTORY
+
+```{r}
+#http://www.football-data.co.uk/englandm.php
+all_gd_pts_evolution_all_seasons = data.frame()
+all_gd_chases_all_seasons = data.frame()
+all_pts_chases_all_seasons = data.frame()
+all_gd_and_pts_chases_all_seasons = data.frame()
+biggest_gd_chases_by_season = data.frame()
+first_year = 1994
+
+## LOTS OF MANUAL CHANGES NEEDED TO MOVE FROM GAMEWEEK TO DATE BASED CALCS
+#  AND VICE VERSA
+
+while (first_year < 2021) {
+  first_year = first_year+1
+  second_year = first_year+1
+  first_year_trimmed = str_sub(as.character(first_year), 3, 4)
+  second_year_trimmed = str_sub(as.character(second_year), 3, 4)
+  url = paste("http://www.football-data.co.uk/mmz4281/", 
+              first_year_trimmed, second_year_trimmed, "/E0.csv", sep = "")
+
+all_gd_pts_evolution = read_csv(url) %>%
+    rename(date = Date) %>%
+    filter(date != "") %>%
+    select(1:10) %>%
+    pivot_longer(cols = c(HomeTeam, AwayTeam), names_to = "venue", values_to = "Team") %>%
+    mutate(gd = case_when(venue == "HomeTeam" ~ (FTHG - FTAG),
+                                       venue == "AwayTeam" ~ (FTAG - FTHG)),
+           pts = case_when(venue == "HomeTeam" & FTHG > FTAG ~ 3,
+                              venue == "HomeTeam" & FTHG < FTAG ~ 0,
+                              venue == "AwayTeam" & FTAG > FTHG ~ 3,
+                              venue == "AwayTeam" & FTAG < FTHG ~ 0,
+                              TRUE ~ 1),
+           Team = paste(Team, first_year_trimmed, second_year_trimmed,
+                        sep = "_")) %>%
+    group_by(Team) %>%
+    mutate(Gameweek = row_number(),
+           gd_running = cumsum(gd),
+           pts_running = cumsum(pts)) %>%
+    select(date, Gameweek, Team, gd_running, pts_running) %>%
+
+#To do chases b date, rather than gameweek, every club needs a total for...
+#every game date throughout the season, based on games they have played to that point
+#idea: create full time series of dates for every club, the fill everything downwards
+
+    ungroup() %>%
+    mutate(date = lubridate::dmy(date)) %>%
+    complete(date, nesting(Team)) %>%
+    group_by(Team) %>%
+    fill(everything(), .direction = c("down")) %>%
+    replace(is.na(.), 0)
+
+all_gd_pts_deficits = all_gd_pts_evolution %>%
+  #Count your chases by either Gameweek...
+    #select(-date) %>%
+    #distinct() %>%
+    #left_join(x = ., y = ., by = "Gameweek") %>%
+  #or Date
+    select(-Gameweek) %>%
+    distinct() %>%
+    left_join(x = ., y = ., by = "date") %>%
+  
+    filter(Team.x != Team.y) %>%
+    mutate(first_team_deficit = gd_running.y - gd_running.x,
+           first_team_deficit_pts = pts_running.y - pts_running.x) %>%
+    left_join(x = ., y = ., by = c("Team.x" = "Team.x", "Team.y" = "Team.y")) %>%
+    rename(first_team = Team.x, second_team = Team.y, 
+           first_team_gd_1 = gd_running.x.x, second_team_gd_1 = gd_running.y.x,
+           first_team_gd_2 = gd_running.x.y, second_team_gd_2 = gd_running.y.y,
+           first_team_deficit_1 = first_team_deficit.x, first_team_deficit_2 = first_team_deficit.y,
+           
+           first_team_pts_1 = pts_running.x.x, second_team_pts_1 = pts_running.y.x,
+           first_team_pts_2 = pts_running.x.y, second_team_pts_2 = pts_running.y.y,
+           first_team_deficit_pts_1 = first_team_deficit_pts.x, first_team_deficit_pts_2 = first_team_deficit_pts.y,
+           
+           #Comment one of these out as required
+           #gameweek_1 = Gameweek.x, gameweek_2 = Gameweek.y,
+           date_1 = date.x, date_2 = date.y
+           ) %>%
+  
+    select(first_team, second_team, 
+           #Comment one of these out as required
+           #gameweek_1, 
+           date_1,
+           
+           first_team_gd_1, second_team_gd_1, first_team_deficit_1,
+           first_team_pts_1, second_team_pts_1, first_team_deficit_pts_1,
+           #Comment one of these out as required
+           #gameweek_2, 
+           date_2,
+           
+           first_team_gd_2, second_team_gd_2, first_team_deficit_2,
+           first_team_pts_2, second_team_pts_2, first_team_deficit_pts_2) %>%
+    #Comment one of these out as required
+    #filter(gameweek_2 > gameweek_1) %>%
+    filter(date_2 > date_1) %>%
+      
+    mutate(swing = first_team_deficit_1 - first_team_deficit_2,
+           swing_pts = first_team_deficit_pts_1 - first_team_deficit_pts_2,
+           chase = first_team_deficit_1,
+           chase_pts = first_team_deficit_pts_1,
+           #Comment one of these out as required
+           #total_gameweeks = gameweek_2 - gameweek_1
+           total_days = date_2 - date_1
+           )
+
+
+    
+    
+    
+all_gd_chases = all_gd_pts_deficits %>%
+    #filter so you look at genuine chases
+    #I.e. initial gap (i.e. positive) and second gap is larger (i.e. polarity is reversed)
+    #Atm this just looks at gd chases
+    filter(first_team_deficit_2 < first_team_deficit_1,
+           first_team_deficit_2 <= 0,
+           first_team_deficit_1 >0)
+
+all_pts_chases = all_gd_pts_deficits%>%
+    #filter so you look at genuine chases
+    #I.e. initial gap (i.e. positive) and second gap is larger (i.e. polarity is reversed)
+    #Atm this just looks at gd chases
+    filter(first_team_deficit_pts_2 < first_team_deficit_pts_1,
+           first_team_deficit_pts_2 <= 0,
+           first_team_deficit_pts_1 >0)
+
+
+
+#biggest_gd_chases = all_gd_chases %>%
+#  ungroup() %>%
+#  #look at max chase by team pair per season
+#  #i.e. between team pair, with minimum chase time (i.e. latest week 1, earliest week 2)
+#    group_by(first_team, second_team) %>%
+#    filter(chase == max(chase)) %>%
+#    filter(gameweek_2 == min(gameweek_2)) %>%
+#    filter(gameweek_1 == max(gameweek_1)) %>%
+#  #now look at biggest chase between any pair in the season
+#    ungroup() %>%
+#    arrange(desc(chase)) %>%
+#    filter(chase == max(chase)) 
+
+#Create some summary dataframes
+all_gd_pts_evolution_all_seasons = all_gd_pts_evolution_all_seasons %>%
+  bind_rows(all_gd_pts_evolution)
+
+all_gd_chases_all_seasons = all_gd_chases_all_seasons %>%
+  bind_rows(all_gd_chases)
+
+all_pts_chases_all_seasons = all_pts_chases_all_seasons %>%
+  bind_rows(all_pts_chases)
+
+#biggest_gd_chases_by_season = biggest_gd_chases_by_season %>%
+#    bind_rows(biggest_gd_chases)
+
+}
+
+#For some reason, the above produces duplicates. 
+#Not sure why, but remove them, from gd and pts
+
+#These need to be amended to put date equivalents in too
+
+all_gd_chases_all_seasons = distinct(all_gd_chases_all_seasons) %>%
+    ungroup() %>%
+    #look at all unique chases 
+    #i.e. between a pair of teams, starting on a given week, ending at the earliest possible week
+    group_by(first_team, second_team, chase, gameweek_1) %>%
+    filter(gameweek_2 == min(gameweek_2)) %>%
+    #now do similar thing to find latest start week of the chase
+    ungroup() %>%
+    group_by(first_team, second_team, chase, gameweek_2) %>%
+    filter(gameweek_1 == max(gameweek_1)) %>%
+    #now exclude smaller chases that occur within larger ones %>%
+    ungroup() %>%
+    group_by(first_team, second_team, gameweek_2) %>%
+    filter(chase == max(chase)) %>% 
+    ungroup() %>%
+    group_by(first_team, second_team, gameweek_1) %>%
+    filter(chase == max(chase))
+
+all_pts_chases_all_seasons = distinct(all_pts_chases_all_seasons) %>%
+    ungroup() %>%
+    #look at all unique chases 
+    #i.e. between a pair of teams, starting on a given week, ending at the earliest possible week
+    group_by(first_team, second_team, chase_pts, gameweek_1) %>%
+    filter(gameweek_2 == min(gameweek_2)) %>%
+    #now do similar thing to find latest start week of the chase
+    ungroup() %>%
+    group_by(first_team, second_team, chase_pts, gameweek_2) %>%
+    filter(gameweek_1 == max(gameweek_1)) %>%
+    #now exclude smaller chases that occur within larger ones %>%
+    ungroup() %>%
+    group_by(first_team, second_team, gameweek_2) %>%
+    filter(chase_pts == max(chase_pts)) %>% 
+    ungroup() %>%
+    group_by(first_team, second_team, gameweek_1) %>%
+    filter(chase_pts == max(chase_pts))
+
+all_gd_and_pts_chases_all_seasons = all_gd_chases_all_seasons %>%
+  inner_join(all_pts_chases_all_seasons)
+
+test = distinct(all_pts_chases_all_seasons) %>%
+  ungroup() %>%
+  #look at all unique chases 
+  #i.e. between a pair of teams, starting on a given week, ending at the earliest possible week
+  group_by(first_team, second_team, chase_pts, date_1) %>%
+  filter(date_2 == min(date_2)) %>%
+  #now do similar thing to find latest start week of the chase
+  ungroup() %>%
+  group_by(first_team, second_team, chase_pts, date_2) %>%
+  filter(date_1 == max(date_1)) %>%
+  #now exclude smaller chases that occur within larger ones %>%
+  ungroup() %>%
+  group_by(first_team, second_team, date_2) %>%
+  filter(chase_pts == max(chase_pts)) %>% 
+  ungroup() %>%
+  group_by(first_team, second_team, date_1) %>%
+  filter(chase_pts == max(chase_pts))
+
+test = test %>%
+  mutate(pts_per_day = chase_pts/as.numeric(total_days))
+
+
+test2 = distinct(all_gd_chases_all_seasons) %>%
+  ungroup() %>%
+  #look at all unique chases 
+  #i.e. between a pair of teams, starting on a given week, ending at the earliest possible week
+  group_by(first_team, second_team, chase, date_1) %>%
+  filter(date_2 == min(date_2)) %>%
+  #now do similar thing to find latest start week of the chase
+  ungroup() %>%
+  group_by(first_team, second_team, chase, date_2) %>%
+  filter(date_1 == max(date_1)) %>%
+  #now exclude smaller chases that occur within larger ones %>%
+  ungroup() %>%
+  group_by(first_team, second_team, date_2) %>%
+  filter(chase == max(chase)) %>% 
+  ungroup() %>%
+  group_by(first_team, second_team, date_1) %>%
+  filter(chase == max(chase))
+
+test3 = test %>%
+  inner_join(test2)
+  
+  
+```
+
+## QUICK ATTEMPT TO GGANIMATE THE BIGGEST CHASE
+
+```{r}
+all_gd_evolution_all_seasons %>% 
+  filter(Team %in% c("Wimbledon_95_96", "Middlesbrough_95_96")) %>%
+  mutate(comment = case_when(Gameweek == 19 ~ "After 19 games each, the gap is 24",
+                             Gameweek == 38 ~ "By the end of the season, they are level",
+                             TRUE ~ "")) %>%
+  #Next few lines inspired by this: https://stackoverflow.com/a/53093389
+  mutate(show_time = case_when(Gameweek %in% c(19,38) ~ 10,
+                               TRUE ~ 1)) %>%
+  # uncount is a tidyr function which copies each line 'n' times
+  uncount(show_time) %>%
+  group_by(Team) %>%
+  mutate(reveal_time = row_number()) %>%
+  ungroup() %>%
+ggplot(aes(Gameweek, gd_running, colour = Team)) + 
+  geom_line() +
+  geom_point(size = 2) + 
+  geom_text(aes(x = Gameweek+1, label = Team), hjust = 0) +
+  geom_text(aes(x = Gameweek, y = -5, label = str_wrap(comment, 20), color = "black")) +
+  #revealTime rather than gameweek, see above
+  transition_reveal(reveal_time) + 
+  coord_cartesian(clip = 'off') + 
+  labs(title = 'Biggest GD chase in PL History') + 
+  theme_minimal() + 
+  theme(plot.margin = margin(5.5, r = 70, 5.5, 5.5)) +
+  theme(legend.position = "none") +
+  scale_color_manual(values=c("black",          #for the text
+                              "red", "blue"))   #for the two teams
+
+```
+
+## NOW DO ANOTHER INTERESTING CHASE
+
+```{r}
+plot_data = all_gd_evolution_all_seasons %>% 
+  filter(Team %in% c("Arsenal_20_21", "Aston Villa_20_21")) %>%
+  mutate(comment = case_when(Gameweek == 14 ~ "After 14 games each, the gap is 20",
+                             Gameweek == 34 ~ "By Gameweek 34, Arsenal have edged ahead",
+                             TRUE ~ "")) %>%
+  #Next few lines inspired by this: https://stackoverflow.com/a/53093389
+  mutate(show_time = case_when(Gameweek %in% c(14,34) ~ 10,
+                               TRUE ~ 1)) %>%
+  # uncount is a tidyr function which copies each line 'n' times
+  uncount(show_time) %>%
+  group_by(Team) %>%
+  mutate(reveal_time = row_number()) %>%
+  ungroup()
+
+ggplot(plot_data, aes(Gameweek, gd_running, colour = Team)) + 
+  geom_line() +
+  geom_point(size = 2) + 
+  geom_text(aes(x = Gameweek+1, label = Team), hjust = 0) +
+  #Had a lot of difficulty trying to change the text colour, so keep it black
+  geom_text(data = plot_data %>% select(-Team, -gd_running) %>% distinct(),
+            aes(x = Gameweek, y = 2, label = str_wrap(comment, 20)),
+            inherit.aes = FALSE) +
+  coord_cartesian(clip = 'off') + 
+  labs(title = 'Biggest GD chase in PL History') + 
+  theme_minimal() + 
+  theme(plot.margin = margin(5.5, r = 70, 5.5, 5.5)) +
+  theme(legend.position = "none") +
+  scale_color_manual(values=c("#EF0107", "#670E36")) +
+  #revealTime rather than gameweek, see above
+  transition_reveal(reveal_time) +
+  view_follow()
+
+```
+
+
+## NOW DO ANOTHER INTERESTING CHASE - LIVERPOOL TO UNITED IN 17-18
+
+```{r}
+plot_data = all_gd_evolution_all_seasons %>% 
+  filter(Team %in% c("Liverpool_17_18", "Man United_17_18")) %>%
+  mutate(comment = case_when(Gameweek == 9 ~ "After 9 games each, the gap is 20",
+                             Gameweek == 28 ~ "By Gameweek 28, Man U have gained 15, but Liverpool have drawn level",
+                             TRUE ~ "")) %>%
+  #Next few lines inspired by this: https://stackoverflow.com/a/53093389
+  mutate(show_time = case_when(Gameweek %in% c(9,28) ~ 10,
+                               TRUE ~ 1)) %>%
+  # uncount is a tidyr function which copies each line 'n' times
+  uncount(show_time) %>%
+  group_by(Team) %>%
+  mutate(reveal_time = row_number()) %>%
+  ungroup()
+
+ggplot(plot_data, aes(Gameweek, gd_running, colour = Team)) + 
+  geom_line() +
+  geom_point(size = 2) + 
+  geom_text(aes(x = Gameweek+1, label = Team), hjust = 0) +
+  #Had a lot of difficulty trying to change the text colour, so keep it black
+  geom_text(data = plot_data %>% select(-Team, -gd_running) %>% distinct(),
+            aes(x = Gameweek, y = 10, label = str_wrap(comment, 20)),
+            inherit.aes = FALSE) +
+  coord_cartesian(clip = 'off') + 
+  labs(title = 'Liverpool chasing United in 17-18 was highly impressive') + 
+  theme_minimal() + 
+  theme(plot.margin = margin(5.5, r = 70, 5.5, 5.5)) +
+  theme(legend.position = "none") +
+  scale_color_manual(values=c("#C8102E", "#DA291C")) +
+  #revealTime rather than gameweek, see above
+  transition_reveal(reveal_time) +
+  view_follow()
+
+```
+
+
+## TESTING
+
+```{r}
+test = all_chases_all_seasons %>% 
+  mutate(first_team_gain = first_team_gd_2 - first_team_gd_1) %>%
+  filter(first_team_gain/chase >= 0.5)
+```
+
