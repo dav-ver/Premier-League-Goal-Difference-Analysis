@@ -558,6 +558,26 @@ ggplot(plot_data, aes(Gameweek, gd_running, colour = Team)) +
 ```
 
 
+## CALCULATE GD STREAKS (NOT CHASES)
+
+```{r}
+#I'm recreating this from an output of the above. Inefficient, better to start from scratch
+streak_length  = 5
+all_gd_streaks = all_gd_pts_evolution_all_seasons_gw %>%
+  select(-date) %>%
+  distinct() %>%
+  mutate(season = str_sub(Team, -5, -1)) %>%
+  group_by(season, Team) %>%
+  arrange(Gameweek) %>%
+  mutate(gd_gw = gd_running - lag(gd_running),
+         pts_gw = pts_running - lag(pts_running),
+         gd_streak = RcppRoll::roll_sum(gd_gw, n = streak_length, fill = NA, align = "right"),
+         pts_streak = RcppRoll::roll_sum(pts_gw, n = streak_length, fill = NA, align = "right"))
+  
+  
+```
+
+
 ## TESTING
 
 ```{r}
