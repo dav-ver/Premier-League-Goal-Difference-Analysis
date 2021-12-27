@@ -27,6 +27,13 @@ all_gd_and_pts_chases_all_seasons = data.frame()
 biggest_gd_chases_by_season = data.frame()
 first_year = 1994
 
+# Define URL elements for the leagues, code below uses one of these
+prem = "/E0.csv"
+championship = "/E1.csv"
+league1 = "/E2.csv"
+league2 = "/E3.csv"
+conference = "/EC.csv"
+
 ## LOTS OF MANUAL CHANGES NEEDED TO MOVE FROM GAMEWEEK TO DATE BASED CALCS
 #  AND VICE VERSA
 
@@ -41,7 +48,7 @@ while (first_year < 2021) {
   first_year_trimmed = str_sub(as.character(first_year), 3, 4)
   second_year_trimmed = str_sub(as.character(second_year), 3, 4)
   url = paste("http://www.football-data.co.uk/mmz4281/", 
-              first_year_trimmed, second_year_trimmed, "/E0.csv", sep = "")
+              first_year_trimmed, second_year_trimmed, prem, sep = "")
 
 # Create running points and goal diff totals by team
 all_gd_pts_evolution = read_csv(url) %>%
@@ -403,7 +410,7 @@ all_gd_and_pts_chases_all_seasons_gw = all_gd_chases_all_seasons_gw %>%
 #For some reason, the above produces duplicates. 
 #Not sure why, but remove them, from gd and pts
 
-test = distinct(all_pts_chases_all_seasons) %>%
+all_pts_chases_all_seasons = distinct(all_pts_chases_all_seasons) %>%
   ungroup() %>%
   #look at all unique chases 
   #i.e. between a pair of teams, starting on a given week, ending at the earliest possible week
@@ -421,11 +428,11 @@ test = distinct(all_pts_chases_all_seasons) %>%
   group_by(first_team, second_team, date_1) %>%
   filter(chase_pts == max(chase_pts))
 
-test = test %>%
+all_pts_chases_all_seasons = all_pts_chases_all_seasons %>%
   mutate(pts_per_day = chase_pts/as.numeric(total_days))
 
 
-test2 = distinct(all_gd_chases_all_seasons) %>%
+all_gd_chases_all_seasons = distinct(all_gd_chases_all_seasons) %>%
   ungroup() %>%
   #look at all unique chases 
   #i.e. between a pair of teams, starting on a given week, ending at the earliest possible week
@@ -443,8 +450,8 @@ test2 = distinct(all_gd_chases_all_seasons) %>%
   group_by(first_team, second_team, date_1) %>%
   filter(chase == max(chase))
 
-test3 = test %>%
-  inner_join(test2)
+all_gd_and_pts_chases_all_seasons = all_gd_chases_all_seasons %>%
+  inner_join(all_pts_chases_all_seasons)
 
 ```
 
