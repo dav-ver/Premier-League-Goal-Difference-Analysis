@@ -99,14 +99,14 @@ all_gd_pts_deficits = all_gd_pts_evolution %>%
            first_team_deficit_pts = pts_running.y - pts_running.x) %>%
     left_join(x = ., y = ., by = c("Team.x" = "Team.x", "Team.y" = "Team.y")) %>%
     rename(first_team = Team.x, second_team = Team.y, 
-           first_team_gd_1 = gd_running.x.x, second_team_gd_1 = gd_running.y.x,
-           first_team_gd_2 = gd_running.x.y, second_team_gd_2 = gd_running.y.y,
-           first_team_deficit_1 = first_team_deficit.x, first_team_deficit_2 = first_team_deficit.y,
+           team1gd1 = gd_running.x.x, team2gd1 = gd_running.y.x,
+           team1gd2 = gd_running.x.y, team2gd2 = gd_running.y.y,
+           team1deficit1 = first_team_deficit.x, team1deficit2 = first_team_deficit.y,
            
-           first_team_pts_1 = pts_running.x.x, second_team_pts_1 = pts_running.y.x,
-           first_team_pts_2 = pts_running.x.y, second_team_pts_2 = pts_running.y.y,
-           first_team_deficit_pts_1 = first_team_deficit_pts.x, 
-           first_team_deficit_pts_2 = first_team_deficit_pts.y,
+           team1pts1 = pts_running.x.x, team2pts1 = pts_running.y.x,
+           team1pts2 = pts_running.x.y, team2pts2 = pts_running.y.y,
+           team1deficitpts1 = first_team_deficit_pts.x, 
+           team1deficitpts2 = first_team_deficit_pts.y,
            
            # Comment one of these out as required
            #gameweek_1 = Gameweek.x, gameweek_2 = Gameweek.y,
@@ -118,22 +118,22 @@ all_gd_pts_deficits = all_gd_pts_evolution %>%
            #gameweek_1, 
            date_1,
            
-           first_team_gd_1, second_team_gd_1, first_team_deficit_1,
-           first_team_pts_1, second_team_pts_1, first_team_deficit_pts_1,
+           team1gd1, team2gd1, team1deficit1,
+           team1pts1, team2pts1, team1deficitpts1,
            #Comment one of these out as required
            #gameweek_2, 
            date_2,
            
-           first_team_gd_2, second_team_gd_2, first_team_deficit_2,
-           first_team_pts_2, second_team_pts_2, first_team_deficit_pts_2) %>%
+           team1gd2, team2gd2, team1deficit2,
+           team1pts2, team2pts2, team1deficitpts2) %>%
     # Comment one of these out as required
     #filter(gameweek_2 > gameweek_1) %>%
     filter(date_2 > date_1) %>%
       
-    mutate(swing = first_team_deficit_1 - first_team_deficit_2,
-           swing_pts = first_team_deficit_pts_1 - first_team_deficit_pts_2,
-           chase = first_team_deficit_1,
-           chase_pts = first_team_deficit_pts_1,
+    mutate(swing = team1deficit1 - team1deficit2,
+           swing_pts = team1deficitpts1 - team1deficitpts2,
+           chase = team1deficit1,
+           chase_pts = team1deficitpts1,
            # Comment one of these out as required
            #total_gameweeks = gameweek_2 - gameweek_1
            total_days = date_2 - date_1
@@ -147,18 +147,18 @@ all_gd_pts_deficits = all_gd_pts_evolution %>%
 # the second gap is smaller than the first one
 # and the second gap is less than/equal to zero
 all_gd_chases = all_gd_pts_deficits %>%
-    filter(first_team_deficit_1 >0,
-           first_team_deficit_2 < first_team_deficit_1,
-           first_team_deficit_2 <= 0)
+    filter(team1deficit1 >0,
+           team1deficit2 < team1deficit1,
+           team1deficit2 <= 0)
 
 # filter so you look at genuine points chases i.e. one team overtakes another
 # I.e. there is an inital (positive) gap,
 # the second gap is smaller than the first one
 # and the second gap is less than/equal to zero
 all_pts_chases = all_gd_pts_deficits%>%
-    filter(first_team_deficit_pts_1 >0,
-           first_team_deficit_pts_2 < first_team_deficit_pts_1,
-           first_team_deficit_pts_2 <= 0)
+    filter(team1deficitpts1 >0,
+           team1deficitpts2 < team1deficitpts1,
+           team1deficitpts2 <= 0)
 
 
 
@@ -265,14 +265,14 @@ all_gd_pts_deficits_gw = all_gd_pts_evolution_gw %>%
            first_team_deficit_pts = pts_running.y - pts_running.x) %>%
     left_join(x = ., y = ., by = c("Team.x" = "Team.x", "Team.y" = "Team.y")) %>%
     rename(first_team = Team.x, second_team = Team.y, 
-           first_team_gd_1 = gd_running.x.x, second_team_gd_1 = gd_running.y.x,
-           first_team_gd_2 = gd_running.x.y, second_team_gd_2 = gd_running.y.y,
-           first_team_deficit_1 = first_team_deficit.x, first_team_deficit_2 = first_team_deficit.y,
+           team1gd1 = gd_running.x.x, team2gd1 = gd_running.y.x,
+           team1gd2 = gd_running.x.y, team2gd2 = gd_running.y.y,
+           team1deficit1 = first_team_deficit.x, team1deficit2 = first_team_deficit.y,
            
-           first_team_pts_1 = pts_running.x.x, second_team_pts_1 = pts_running.y.x,
-           first_team_pts_2 = pts_running.x.y, second_team_pts_2 = pts_running.y.y,
-           first_team_deficit_pts_1 = first_team_deficit_pts.x, 
-           first_team_deficit_pts_2 = first_team_deficit_pts.y,
+           team1pts1 = pts_running.x.x, team2pts1 = pts_running.y.x,
+           team1pts2 = pts_running.x.y, team2pts2 = pts_running.y.y,
+           team1deficitpts1 = first_team_deficit_pts.x, 
+           team1deficitpts2 = first_team_deficit_pts.y,
            
            # This is specific to Gameweek calculations
            gameweek_1 = Gameweek.x, gameweek_2 = Gameweek.y) %>%
@@ -281,20 +281,20 @@ all_gd_pts_deficits_gw = all_gd_pts_evolution_gw %>%
            # This is specific to Gameweek calculations 
            gameweek_1,
            
-           first_team_gd_1, second_team_gd_1, first_team_deficit_1,
-           first_team_pts_1, second_team_pts_1, first_team_deficit_pts_1,
+           team1gd1, team2gd1, team1deficit1,
+           team1pts1, team2pts1, team1deficitpts1,
            # This is specific to Gameweek calculations
            gameweek_2,
            
-           first_team_gd_2, second_team_gd_2, first_team_deficit_2,
-           first_team_pts_2, second_team_pts_2, first_team_deficit_pts_2) %>%
+           team1gd2, team2gd2, team1deficit2,
+           team1pts2, team2pts2, team1deficitpts2) %>%
     # This is specific to Gameweek calculations
     filter(gameweek_2 > gameweek_1) %>%
       
-    mutate(swing = first_team_deficit_1 - first_team_deficit_2,
-           swing_pts = first_team_deficit_pts_1 - first_team_deficit_pts_2,
-           chase = first_team_deficit_1,
-           chase_pts = first_team_deficit_pts_1,
+    mutate(swing = team1deficit1 - team1deficit2,
+           swing_pts = team1deficitpts1 - team1deficitpts2,
+           chase = team1deficit1,
+           chase_pts = team1deficitpts1,
            # This is specific to Gameweek calculations
            total_gameweeks = gameweek_2 - gameweek_1)
 
@@ -306,18 +306,18 @@ all_gd_pts_deficits_gw = all_gd_pts_evolution_gw %>%
 # the second gap is smaller than the first one
 # and the second gap is less than/equal to zero
 all_gd_chases_gw = all_gd_pts_deficits_gw %>%
-    filter(first_team_deficit_1 >0,
-           first_team_deficit_2 < first_team_deficit_1,
-           first_team_deficit_2 <= 0)
+    filter(team1deficit1 >0,
+           team1deficit2 < team1deficit1,
+           team1deficit2 <= 0)
 
 # filter so you look at genuine points chases i.e. one team overtakes another
 # I.e. there is an inital (positive) gap,
 # the second gap is smaller than the first one
 # and the second gap is less than/equal to zero
 all_pts_chases_gw = all_gd_pts_deficits_gw %>%
-    filter(first_team_deficit_pts_1 >0,
-           first_team_deficit_pts_2 < first_team_deficit_pts_1,
-           first_team_deficit_pts_2 <= 0)
+    filter(team1deficitpts1 >0,
+           team1deficitpts2 < team1deficitpts1,
+           team1deficitpts2 <= 0)
 
 
 
@@ -374,8 +374,8 @@ all_gd_chases_all_seasons_gw = distinct(all_gd_chases_all_seasons_gw) %>%
     ungroup() %>%
     group_by(first_team, second_team, gameweek_1) %>%
     filter(chase == max(chase)) %>%
-  select(-first_team_pts_1, -second_team_pts_1, -first_team_deficit_pts_1, 
-         -first_team_pts_2, -second_team_pts_2, -first_team_deficit_pts_2,
+  select(-team1pts1, -team2pts1, -team1deficitpts1, 
+         -team1pts2, -team2pts2, -team1deficitpts2,
          -swing_pts, -chase_pts)
 
 all_pts_chases_all_seasons_gw = distinct(all_pts_chases_all_seasons_gw) %>%
@@ -395,8 +395,8 @@ all_pts_chases_all_seasons_gw = distinct(all_pts_chases_all_seasons_gw) %>%
     ungroup() %>%
     group_by(first_team, second_team, gameweek_1) %>%
     filter(chase_pts == max(chase_pts)) %>%
-    select(-first_team_gd_1, -second_team_gd_1, -first_team_deficit_1, 
-           -first_team_gd_2, -second_team_gd_2, -first_team_deficit_2,
+    select(-team1gd1, -team2gd1, -team1deficit1, 
+           -team1gd2, -team2gd2, -team1deficit2,
            -swing, -chase)
 
 all_gd_and_pts_chases_all_seasons_gw = all_gd_chases_all_seasons_gw %>%
@@ -404,7 +404,7 @@ all_gd_and_pts_chases_all_seasons_gw = all_gd_chases_all_seasons_gw %>%
 
 ```
 
-## TIDY THE SUMMARY TABLES FOR DATE CHASES - NEEDS FIXING
+## TIDY THE SUMMARY TABLES FOR DATE CHASES
 
 ```{r}
 #For some reason, the above produces duplicates. 
@@ -589,7 +589,7 @@ all_gd_streaks = all_gd_pts_evolution_all_seasons_gw %>%
 
 ```{r}
 test = all_chases_all_seasons %>% 
-  mutate(first_team_gain = first_team_gd_2 - first_team_gd_1) %>%
+  mutate(first_team_gain = team1gd2 - team1gd1) %>%
   filter(first_team_gain/chase >= 0.5)
 ```
 
