@@ -14,6 +14,17 @@ library(ggrepel)
 ```
 
 
+## DEFINE URL ELEMENTS BY LEAGUE, USEFUL BELOW
+
+```{r}
+prem = "/E0.csv"
+championship = "/E1.csv"
+league1 = "/E2.csv"
+league2 = "/E3.csv"
+conference = "/EC.csv"
+```
+
+
 ## READ IN DATA, COUNT AND ORDER ALL CHASES BETWEEN ALL TEAMS IN PL HISTORY
 
 ```{r}
@@ -26,17 +37,6 @@ all_pts_chases_all_seasons = data.frame()
 all_gd_and_pts_chases_all_seasons = data.frame()
 biggest_gd_chases_by_season = data.frame()
 first_year = 1994
-
-# Define URL elements for the leagues, code below uses one of these
-prem = "/E0.csv"
-championship = "/E1.csv"
-league1 = "/E2.csv"
-league2 = "/E3.csv"
-conference = "/EC.csv"
-
-## LOTS OF MANUAL CHANGES NEEDED TO MOVE FROM GAMEWEEK TO DATE BASED CALCS
-#  AND VICE VERSA
-
 
 # Loop to calculate running goal difference and points
 # And then caclulate chases
@@ -85,11 +85,8 @@ all_gd_pts_evolution = read_csv(url) %>%
 
 # Calculate difference between every team at every timestep
 all_gd_pts_deficits = all_gd_pts_evolution %>%
-  # Count your chases by either Gameweek...
-    #select(-date) %>%
-    #distinct() %>%
-    #left_join(x = ., y = ., by = "Gameweek") %>%
-  # or Date
+  # Count your chases by Date
+  # This line is different to the gameweek version
     select(-Gameweek) %>%
     distinct() %>%
     left_join(x = ., y = ., by = "date") %>%
@@ -108,41 +105,35 @@ all_gd_pts_deficits = all_gd_pts_evolution %>%
            team1deficitpts1 = first_team_deficit_pts.x, 
            team1deficitpts2 = first_team_deficit_pts.y,
            
-           # Comment one of these out as required
-           #gameweek_1 = Gameweek.x, gameweek_2 = Gameweek.y,
+           # This line is different to the gameweek version
            date_1 = date.x, date_2 = date.y
            ) %>%
   
     select(first_team, second_team, 
-           #Comment one of these out as required
-           #gameweek_1, 
+           # This line is different to the gameweek version
            date_1,
            
            team1gd1, team2gd1, team1deficit1,
            team1pts1, team2pts1, team1deficitpts1,
-           #Comment one of these out as required
-           #gameweek_2, 
+           # This line is different to the gameweek version 
            date_2,
            
            team1gd2, team2gd2, team1deficit2,
            team1pts2, team2pts2, team1deficitpts2) %>%
-    # Comment one of these out as required
-    #filter(gameweek_2 > gameweek_1) %>%
+    # This line is different to the gameweek version
     filter(date_2 > date_1) %>%
       
     mutate(swing = team1deficit1 - team1deficit2,
            swing_pts = team1deficitpts1 - team1deficitpts2,
            chase = team1deficit1,
            chase_pts = team1deficitpts1,
-           # Comment one of these out as required
-           #total_gameweeks = gameweek_2 - gameweek_1
+           # This line is different to the gameweek version
            total_days = date_2 - date_1
            )
 
 
     
-    
-# filter so you look at genuine goal diff chases i.e. one team overtakes another
+# filter so you look at genuine goal diff chases i.e. one team catches another
 # I.e. there is an inital (positive) gap,
 # the second gap is smaller than the first one
 # and the second gap is less than/equal to zero
@@ -151,29 +142,13 @@ all_gd_chases = all_gd_pts_deficits %>%
            team1deficit2 < team1deficit1,
            team1deficit2 <= 0)
 
-# filter so you look at genuine points chases i.e. one team overtakes another
-# I.e. there is an inital (positive) gap,
-# the second gap is smaller than the first one
-# and the second gap is less than/equal to zero
+# Same thing for points
 all_pts_chases = all_gd_pts_deficits%>%
     filter(team1deficitpts1 >0,
            team1deficitpts2 < team1deficitpts1,
            team1deficitpts2 <= 0)
 
 
-
-#biggest_gd_chases = all_gd_chases %>%
-#  ungroup() %>%
-#  #look at max chase by team pair per season
-#  #i.e. between team pair, with minimum chase time (i.e. latest week 1, earliest week 2)
-#    group_by(first_team, second_team) %>%
-#    filter(chase == max(chase)) %>%
-#    filter(gameweek_2 == min(gameweek_2)) %>%
-#    filter(gameweek_1 == max(gameweek_1)) %>%
-#  #now look at biggest chase between any pair in the season
-#    ungroup() %>%
-#    arrange(desc(chase)) %>%
-#    filter(chase == max(chase)) 
 
 # Fill the summary summary dataframes
 all_gd_pts_evolution_all_seasons = all_gd_pts_evolution_all_seasons %>%
@@ -204,9 +179,6 @@ all_gd_and_pts_chases_all_seasons_gw = data.frame()
 biggest_gd_chases_by_season_gw = data.frame()
 first_year = 1994
 
-## LOTS OF MANUAL CHANGES NEEDED TO MOVE FROM GAMEWEEK TO DATE BASED CALCS
-#  AND VICE VERSA
-
 
 # Loop to calculate running goal difference and points
 # And then caclulate chases
@@ -218,7 +190,7 @@ while (first_year < 2021) {
   first_year_trimmed = str_sub(as.character(first_year), 3, 4)
   second_year_trimmed = str_sub(as.character(second_year), 3, 4)
   url = paste("http://www.football-data.co.uk/mmz4281/", 
-              first_year_trimmed, second_year_trimmed, "/E0.csv", sep = "")
+              first_year_trimmed, second_year_trimmed, prem, sep = "")
 
 # Create running points and goal diff totals by team
 all_gd_pts_evolution_gw = read_csv(url) %>%
@@ -300,7 +272,6 @@ all_gd_pts_deficits_gw = all_gd_pts_evolution_gw %>%
 
 
     
-    
 # filter so you look at genuine goal diff chases i.e. one team overtakes another
 # I.e. there is an inital (positive) gap,
 # the second gap is smaller than the first one
@@ -310,29 +281,12 @@ all_gd_chases_gw = all_gd_pts_deficits_gw %>%
            team1deficit2 < team1deficit1,
            team1deficit2 <= 0)
 
-# filter so you look at genuine points chases i.e. one team overtakes another
-# I.e. there is an inital (positive) gap,
-# the second gap is smaller than the first one
-# and the second gap is less than/equal to zero
+# same thing for points chases
 all_pts_chases_gw = all_gd_pts_deficits_gw %>%
     filter(team1deficitpts1 >0,
            team1deficitpts2 < team1deficitpts1,
            team1deficitpts2 <= 0)
 
-
-
-#biggest_gd_chases = all_gd_chases %>%
-#  ungroup() %>%
-#  #look at max chase by team pair per season
-#  #i.e. between team pair, with minimum chase time (i.e. latest week 1, earliest week 2)
-#    group_by(first_team, second_team) %>%
-#    filter(chase == max(chase)) %>%
-#    filter(gameweek_2 == min(gameweek_2)) %>%
-#    filter(gameweek_1 == max(gameweek_1)) %>%
-#  #now look at biggest chase between any pair in the season
-#    ungroup() %>%
-#    arrange(desc(chase)) %>%
-#    filter(chase == max(chase)) 
 
 # Fill the summary summary dataframes
 all_gd_pts_evolution_all_seasons_gw = all_gd_pts_evolution_all_seasons_gw %>%
