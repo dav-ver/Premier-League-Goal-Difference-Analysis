@@ -87,7 +87,7 @@ all_gd_pts_evolution = read_csv(url) %>%
 all_gd_pts_deficits = all_gd_pts_evolution %>%
   # Count your chases by Date
   # This line is different to the gameweek version
-    select(-Gameweek) %>%
+    #select(-Gameweek) %>%
     distinct() %>%
     left_join(x = ., y = ., by = "date") %>%
   
@@ -106,17 +106,19 @@ all_gd_pts_deficits = all_gd_pts_evolution %>%
            team1deficitpts2 = first_team_deficit_pts.y,
            
            # This line is different to the gameweek version
-           date_1 = date.x, date_2 = date.y
-           ) %>%
+           date_1 = date.x, date_2 = date.y,
+           
+           team1gw1 = Gameweek.x.x, team2gw1 = Gameweek.y.x,
+           team1gw2 = Gameweek.x.y, team2gw2 = Gameweek.y.y) %>%
   
     select(first_team, second_team, 
            # This line is different to the gameweek version
-           date_1,
+           date_1, team1gw1, team2gw1,
            
            team1gd1, team2gd1, team1deficit1,
            team1pts1, team2pts1, team1deficitpts1,
            # This line is different to the gameweek version 
-           date_2,
+           date_2, team1gw2, team2gw2,
            
            team1gd2, team2gd2, team1deficit2,
            team1pts2, team2pts2, team1deficitpts2) %>%
@@ -413,7 +415,7 @@ all_gd_and_pts_chases_all_seasons = all_gd_chases_all_seasons %>%
 ## QUICK ATTEMPT TO GGANIMATE THE BIGGEST CHASE
 
 ```{r}
-all_gd_evolution_all_seasons %>% 
+all_gd_pts_evolution_all_seasons %>% 
   filter(Team %in% c("Wimbledon_95_96", "Middlesbrough_95_96")) %>%
   mutate(comment = case_when(Gameweek == 19 ~ "After 19 games each, the gap is 24",
                              Gameweek == 38 ~ "By the end of the season, they are level",
