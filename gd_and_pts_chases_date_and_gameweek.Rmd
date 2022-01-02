@@ -64,12 +64,15 @@ all_gd_pts_evolution = read_csv(url) %>%
                               venue == "AwayTeam" & FTAG < FTHG ~ 0,
                               TRUE ~ 1),
            Team = paste(Team, first_year_trimmed, second_year_trimmed,
-                        sep = "_")) %>%
+                        sep = "_"),
+           gls = case_when(venue == "HomeTeam" ~ FTHG,
+                           venue == "AwayTeam" ~ FTAG)) %>%
     group_by(Team) %>%
     mutate(Gameweek = row_number(),
            gd_running = cumsum(gd),
-           pts_running = cumsum(pts)) %>%
-    select(date, Gameweek, Team, gd_running, pts_running) %>%
+           pts_running = cumsum(pts),
+           gls_running = cumsum(gls)) %>%
+    select(date, Gameweek, Team, gd_running, pts_running, gls_running) %>%
 
     # For chases by date, rather than gameweek, every club needs a total for...
     # every game date throughout the season, based on games they have played...
@@ -80,7 +83,13 @@ all_gd_pts_evolution = read_csv(url) %>%
     complete(date, nesting(Team)) %>%
     group_by(Team) %>%
     fill(everything(), .direction = c("down")) %>%
-    replace(is.na(.), 0)
+    replace(is.na(.), 0) %>%
+  
+  # Table position for every club on every date
+  group_by(date) %>%
+  arrange(desc(pts_running), desc(gd_running), desc(gls_running)) %>%
+  mutate(pos = row_number()) %>%
+  arrange(date)
 
 
 # Calculate difference between every team at every timestep
@@ -111,16 +120,19 @@ all_gd_pts_deficits = all_gd_pts_evolution %>%
            date_1 = date.x, date_2 = date.y,
            
            t1gw1 = Gameweek.x.x, t2gw1 = Gameweek.y.x,
-           t1gw2 = Gameweek.x.y, t2gw2 = Gameweek.y.y) %>%
+           t1gw2 = Gameweek.x.y, t2gw2 = Gameweek.y.y,
+           
+           t1pos1 = pos.x.x, t2pos1 = pos.y.x,
+           t1pos2 = pos.x.y, t2pos2 = pos.y.y) %>%
   
     select(first_team, second_team, 
            # This line is different to the gameweek version
-           date_1, t1gw1, t2gw1, t1gih1,
+           date_1, t1gw1, t2gw1, t1gih1, t1pos1, t2pos1,
            
            t1gd1, t2gd1, t1deficit1,
            t1pts1, t2pts1, t1deficitpts1,
            # This line is different to the gameweek version 
-           date_2, t1gw2, t2gw2, t1gih2,
+           date_2, t1gw2, t2gw2, t1gih2, t1pos2, t2pos2,
            
            t1gd2, t2gd2, t1deficit2,
            t1pts2, t2pts2, t1deficitpts2) %>%
@@ -539,6 +551,11 @@ all_gd_streaks = all_gd_pts_evolution_all_seasons_gw %>%
          pts_gw = pts_running - lag(pts_running),
          gd_streak = RcppRoll::roll_sum(gd_gw, n = streak_length, fill = NA, align = "right"),
          pts_streak = RcppRoll::roll_sum(pts_gw, n = streak_length, fill = NA, align = "right"))
+
+all_gd_streaks_tidy = all_gd_streaks %>%
+  rename(last_gw = Gameweek) %>%
+  mutate(first_gw = last_gw - streak_length + 1) %>%
+  select(Team, first_gw, last_gw, gd_streak, pts_streak)
   
   
 ```
