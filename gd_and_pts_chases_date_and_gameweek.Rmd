@@ -89,7 +89,12 @@ all_gd_pts_evolution = read_csv(url) %>%
   group_by(date) %>%
   arrange(desc(pts_running), desc(gd_running), desc(gls_running)) %>%
   mutate(pos = row_number()) %>%
-  arrange(date)
+  arrange(date) %>%
+  
+  # Table position for every club on final date of season
+  ungroup() %>%
+  group_by(Team) %>%
+  mutate(posfinal = pos[date == max(date, na.rm = TRUE)])
 
 
 # Calculate difference between every team at every timestep
@@ -123,7 +128,8 @@ all_gd_pts_deficits = all_gd_pts_evolution %>%
            t1gw2 = Gameweek.x.y, t2gw2 = Gameweek.y.y,
            
            t1pos1 = pos.x.x, t2pos1 = pos.y.x,
-           t1pos2 = pos.x.y, t2pos2 = pos.y.y) %>%
+           t1pos2 = pos.x.y, t2pos2 = pos.y.y,
+           t1posfinal = posfinal.x.x, t2posfinal = posfinal.y.x) %>%
   
     select(first_team, second_team, 
            # This line is different to the gameweek version
@@ -135,8 +141,10 @@ all_gd_pts_deficits = all_gd_pts_evolution %>%
            date_2, t1gw2, t2gw2, t1gih2, t1pos2, t2pos2,
            
            t1gd2, t2gd2, t1deficit2,
-           t1pts2, t2pts2, t1deficitpts2) %>%
+           t1pts2, t2pts2, t1deficitpts2,
+           t1posfinal, t2posfinal) %>%
     # This line is different to the gameweek version
+    # Removes meaningless negative chases i.e. second date earlier than first  
     filter(date_2 > date_1) %>%
       
     mutate(swing = t1deficit1 - t1deficit2,
@@ -145,8 +153,11 @@ all_gd_pts_deficits = all_gd_pts_evolution %>%
            chase_pts = t1deficitpts1,
            # This line is different to the gameweek version
            total_days = date_2 - date_1,
-           t1extragames = t1gih1 - t1gih2
-           )
+           t1extragames = t1gih1 - t1gih2,
+           t1deficitposfinal = t1posfinal - t2posfinal
+           ) %>%
+  
+  relocate(t1posfinal, t2posfinal, .before = t1deficitposfinal)
 
 
     
