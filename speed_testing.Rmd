@@ -1,0 +1,215 @@
+---
+title: "Untitled"
+author: "David Verry"
+date: "8 January 2022"
+output: html_document
+---
+
+```{r}
+library(bench)
+library(profvis)
+```
+
+
+## REMOVE COLUMN RELOCATION FROM THE DEFICITS CALCULATION
+```{r}
+timings_relocate = bench::mark({
+  
+  with_relocation = 
+    # Calculate difference between every team at every timestep
+    all_gd_pts_evolution %>%
+  # Count your chases by Date
+  # This line is different to the gameweek version
+    #select(-Gameweek) %>%
+    distinct() %>%
+    left_join(x = ., y = ., by = "date") %>%
+  
+    filter(Team.x != Team.y) %>%
+    mutate(first_team_deficit = gd_running.y - gd_running.x,
+           first_team_deficit_pts = pts_running.y - pts_running.x,
+           t1gih = Gameweek.y - Gameweek.x) %>%
+    left_join(x = ., y = ., by = c("Team.x" = "Team.x", "Team.y" = "Team.y")) %>%
+    rename(first_team = Team.x, second_team = Team.y, 
+           t1gd1 = gd_running.x.x, t2gd1 = gd_running.y.x,
+           t1gd2 = gd_running.x.y, t2gd2 = gd_running.y.y,
+           t1deficit1 = first_team_deficit.x, t1deficit2 = first_team_deficit.y,
+           t1gih1 = t1gih.x, t1gih2 = t1gih.y,
+           
+           t1pts1 = pts_running.x.x, t2pts1 = pts_running.y.x,
+           t1pts2 = pts_running.x.y, t2pts2 = pts_running.y.y,
+           t1deficitpts1 = first_team_deficit_pts.x, 
+           t1deficitpts2 = first_team_deficit_pts.y,
+           
+           # This line is different to the gameweek version
+           date_1 = date.x, date_2 = date.y,
+           
+           t1gw1 = Gameweek.x.x, t2gw1 = Gameweek.y.x,
+           t1gw2 = Gameweek.x.y, t2gw2 = Gameweek.y.y,
+           
+           t1pos1 = pos.x.x, t2pos1 = pos.y.x,
+           t1pos2 = pos.x.y, t2pos2 = pos.y.y,
+           t1posfinal = posfinal.x.x, t2posfinal = posfinal.y.x) %>%
+  
+    select(first_team, second_team, 
+           # This line is different to the gameweek version
+           date_1, t1gw1, t2gw1, t1gih1, t1pos1, t2pos1,
+           
+           t1gd1, t2gd1, t1deficit1,
+           t1pts1, t2pts1, t1deficitpts1,
+           # This line is different to the gameweek version 
+           date_2, t1gw2, t2gw2, t1gih2, t1pos2, t2pos2,
+           
+           t1gd2, t2gd2, t1deficit2,
+           t1pts2, t2pts2, t1deficitpts2,
+           t1posfinal, t2posfinal) %>%
+    # This line is different to the gameweek version
+    # Removes meaningless negative chases i.e. second date earlier than first  
+    filter(date_2 > date_1) %>%
+      
+    mutate(swing = t1deficit1 - t1deficit2,
+           swing_pts = t1deficitpts1 - t1deficitpts2,
+           chase = t1deficit1,
+           chase_pts = t1deficitpts1,
+           # This line is different to the gameweek version
+           total_days = date_2 - date_1,
+           t1extragames = t1gih1 - t1gih2,
+           t1deficitposfinal = t1posfinal - t2posfinal
+           ) %>%
+  
+  relocate(t1posfinal, t2posfinal, .before = t1deficitposfinal), 
+  
+  
+
+without_relocation = 
+    # Calculate difference between every team at every timestep
+    all_gd_pts_evolution %>%
+  # Count your chases by Date
+  # This line is different to the gameweek version
+    #select(-Gameweek) %>%
+    distinct() %>%
+    left_join(x = ., y = ., by = "date") %>%
+  
+    filter(Team.x != Team.y) %>%
+    mutate(first_team_deficit = gd_running.y - gd_running.x,
+           first_team_deficit_pts = pts_running.y - pts_running.x,
+           t1gih = Gameweek.y - Gameweek.x) %>%
+    left_join(x = ., y = ., by = c("Team.x" = "Team.x", "Team.y" = "Team.y")) %>%
+    rename(first_team = Team.x, second_team = Team.y, 
+           t1gd1 = gd_running.x.x, t2gd1 = gd_running.y.x,
+           t1gd2 = gd_running.x.y, t2gd2 = gd_running.y.y,
+           t1deficit1 = first_team_deficit.x, t1deficit2 = first_team_deficit.y,
+           t1gih1 = t1gih.x, t1gih2 = t1gih.y,
+           
+           t1pts1 = pts_running.x.x, t2pts1 = pts_running.y.x,
+           t1pts2 = pts_running.x.y, t2pts2 = pts_running.y.y,
+           t1deficitpts1 = first_team_deficit_pts.x, 
+           t1deficitpts2 = first_team_deficit_pts.y,
+           
+           # This line is different to the gameweek version
+           date_1 = date.x, date_2 = date.y,
+           
+           t1gw1 = Gameweek.x.x, t2gw1 = Gameweek.y.x,
+           t1gw2 = Gameweek.x.y, t2gw2 = Gameweek.y.y,
+           
+           t1pos1 = pos.x.x, t2pos1 = pos.y.x,
+           t1pos2 = pos.x.y, t2pos2 = pos.y.y,
+           t1posfinal = posfinal.x.x, t2posfinal = posfinal.y.x) %>%
+  
+    select(first_team, second_team, 
+           # This line is different to the gameweek version
+           date_1, t1gw1, t2gw1, t1gih1, t1pos1, t2pos1,
+           
+           t1gd1, t2gd1, t1deficit1,
+           t1pts1, t2pts1, t1deficitpts1,
+           # This line is different to the gameweek version 
+           date_2, t1gw2, t2gw2, t1gih2, t1pos2, t2pos2,
+           
+           t1gd2, t2gd2, t1deficit2,
+           t1pts2, t2pts2, t1deficitpts2,
+           t1posfinal, t2posfinal) %>%
+    # This line is different to the gameweek version
+    # Removes meaningless negative chases i.e. second date earlier than first  
+    filter(date_2 > date_1) %>%
+      
+    mutate(swing = t1deficit1 - t1deficit2,
+           swing_pts = t1deficitpts1 - t1deficitpts2,
+           chase = t1deficit1,
+           chase_pts = t1deficitpts1,
+           # This line is different to the gameweek version
+           total_days = date_2 - date_1,
+           t1extragames = t1gih1 - t1gih2,
+           t1deficitposfinal = t1posfinal - t2posfinal
+           )
+  
+})
+
+timings_relocate
+```
+
+
+## PROFVIS ENTIRE CLACULATION CHUNK
+```{r}
+  with_relocation = 
+    # Calculate difference between every team at every timestep
+    all_gd_pts_evolution %>%
+  # Count your chases by Date
+  # This line is different to the gameweek version
+    #select(-Gameweek) %>%
+    distinct() %>%
+    left_join(x = ., y = ., by = "date") %>%
+  
+    filter(Team.x != Team.y) %>%
+    mutate(first_team_deficit = gd_running.y - gd_running.x,
+           first_team_deficit_pts = pts_running.y - pts_running.x,
+           t1gih = Gameweek.y - Gameweek.x) %>%
+    left_join(x = ., y = ., by = c("Team.x" = "Team.x", "Team.y" = "Team.y")) %>%
+    rename(first_team = Team.x, second_team = Team.y, 
+           t1gd1 = gd_running.x.x, t2gd1 = gd_running.y.x,
+           t1gd2 = gd_running.x.y, t2gd2 = gd_running.y.y,
+           t1deficit1 = first_team_deficit.x, t1deficit2 = first_team_deficit.y,
+           t1gih1 = t1gih.x, t1gih2 = t1gih.y,
+           
+           t1pts1 = pts_running.x.x, t2pts1 = pts_running.y.x,
+           t1pts2 = pts_running.x.y, t2pts2 = pts_running.y.y,
+           t1deficitpts1 = first_team_deficit_pts.x, 
+           t1deficitpts2 = first_team_deficit_pts.y,
+           
+           # This line is different to the gameweek version
+           date_1 = date.x, date_2 = date.y,
+           
+           t1gw1 = Gameweek.x.x, t2gw1 = Gameweek.y.x,
+           t1gw2 = Gameweek.x.y, t2gw2 = Gameweek.y.y,
+           
+           t1pos1 = pos.x.x, t2pos1 = pos.y.x,
+           t1pos2 = pos.x.y, t2pos2 = pos.y.y,
+           t1posfinal = posfinal.x.x, t2posfinal = posfinal.y.x) %>%
+  
+    select(first_team, second_team, 
+           # This line is different to the gameweek version
+           date_1, t1gw1, t2gw1, t1gih1, t1pos1, t2pos1,
+           
+           t1gd1, t2gd1, t1deficit1,
+           t1pts1, t2pts1, t1deficitpts1,
+           # This line is different to the gameweek version 
+           date_2, t1gw2, t2gw2, t1gih2, t1pos2, t2pos2,
+           
+           t1gd2, t2gd2, t1deficit2,
+           t1pts2, t2pts2, t1deficitpts2,
+           t1posfinal, t2posfinal) %>%
+    # This line is different to the gameweek version
+    # Removes meaningless negative chases i.e. second date earlier than first  
+    filter(date_2 > date_1) %>%
+      
+    mutate(swing = t1deficit1 - t1deficit2,
+           swing_pts = t1deficitpts1 - t1deficitpts2,
+           chase = t1deficit1,
+           chase_pts = t1deficitpts1,
+           # This line is different to the gameweek version
+           total_days = date_2 - date_1,
+           t1extragames = t1gih1 - t1gih2,
+           t1deficitposfinal = t1posfinal - t2posfinal
+           ) %>%
+  
+  relocate(t1posfinal, t2posfinal, .before = t1deficitposfinal)
+```
+
