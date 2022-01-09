@@ -31,7 +31,7 @@ conference = "/EC.csv"
 start_time = Sys.time()
 # This is where the data is from: http://www.football-data.co.uk/englandm.php
 
-# Create blank summary dataframes to fill with the loop
+# Create blank summary dataframe to fill with the loop
 all_gd_pts_evolution_all_seasons = data.frame()
 all_gd_chases_all_seasons = data.frame()
 all_pts_chases_all_seasons = data.frame()
@@ -159,7 +159,6 @@ all_gd_pts_deficits = all_gd_pts_evolution %>%
            )
 
 
-    
 # filter so you look at genuine goal diff chases i.e. one team catches another
 # I.e. there is an inital (positive) gap,
 # the second gap is smaller than the first one
@@ -175,17 +174,16 @@ all_pts_chases = all_gd_pts_deficits%>%
            t1deficitpts2 < t1deficitpts1,
            t1deficitpts2 <= 0)
 
-
-
 # Fill the summary summary dataframes
+#Speed these up by writing to list then binding there, for example
+# see here: https://stackoverflow.com/questions/56076736/increase-speed-of-bind-rows-within-loop-3000-dataframes
 all_gd_pts_evolution_all_seasons = all_gd_pts_evolution_all_seasons %>%
   bind_rows(all_gd_pts_evolution)
-
 all_gd_chases_all_seasons = all_gd_chases_all_seasons %>%
   bind_rows(all_gd_chases)
-
 all_pts_chases_all_seasons = all_pts_chases_all_seasons %>%
   bind_rows(all_pts_chases)
+
 
 }
 
@@ -194,7 +192,8 @@ all_gd_chases_all_seasons = all_gd_chases_all_seasons %>%
 
 all_pts_chases_all_seasons = all_pts_chases_all_seasons %>%
   relocate(t1posfinal, t2posfinal, .before = t1deficitposfinal)
-  
+
+
 
 end_time = Sys.time()
 paste("run time: ", end_time-start_time)
