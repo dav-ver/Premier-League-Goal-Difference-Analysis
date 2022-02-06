@@ -1,0 +1,13 @@
+run time:  1.59558053414027 - intial script
+run time:  1.41431623299917 - moving relocate arguments out of loop
+moving everything out of the loop has made it way slower >:(
+run time:  1.99096453587214 - back to start to get working version of code
+run time:  2.15124198198318 - back to start with relocate added back in
+run time:  1.14717721541723 - alternative to bind_rows: rbindlist
+
+
+Testing the bind_rows_alternatives
+run time:  27.5967199802399 - original, with bind_rows
+run time:  20.0379068851471 - new, with rbindlist
+run time:  12.9876599311829
+run time:  8.97460103034973

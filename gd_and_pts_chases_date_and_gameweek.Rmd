@@ -32,11 +32,10 @@ start_time = Sys.time()
 # This is where the data is from: http://www.football-data.co.uk/englandm.php
 
 # Create blank summary dataframe to fill with the loop
-all_gd_pts_evolution_all_seasons = data.frame()
-all_gd_chases_all_seasons = data.frame()
-all_pts_chases_all_seasons = data.frame()
-all_gd_and_pts_chases_all_seasons = data.frame()
-biggest_gd_chases_by_season = data.frame()
+all_gd_pts_evolution_all_seasons = list()
+all_gd_chases_all_seasons = list()
+all_pts_chases_all_seasons = list()
+all_gd_and_pts_chases_all_seasons = list()
 
 # Choose league and time period
 first_year = 1994
@@ -57,44 +56,44 @@ all_gd_pts_evolution = read_csv(url) %>%
     rename(date = Date) %>%
     filter(date != "") %>%
     select(1:10) %>%
-    pivot_longer(cols = c(HomeTeam, AwayTeam), names_to = "venue", values_to = "Team") %>%
-    mutate(gd = case_when(venue == "HomeTeam" ~ (FTHG - FTAG),
+    pivot_longer(cols = c(HomeTeam, AwayTeam), names_to = "venue", values_to = "team") %>%
+        mutate(gd_gw = case_when(venue == "HomeTeam" ~ (FTHG - FTAG),
                           venue == "AwayTeam" ~ (FTAG - FTHG)),
-           pts = case_when(venue == "HomeTeam" & FTHG > FTAG ~ 3,
+           pts_gw = case_when(venue == "HomeTeam" & FTHG > FTAG ~ 3,
                            venue == "HomeTeam" & FTHG < FTAG ~ 0,
                            venue == "AwayTeam" & FTAG > FTHG ~ 3,
                            venue == "AwayTeam" & FTAG < FTHG ~ 0,
                            TRUE ~ 1),
-           Team = paste(Team, first_year_trimmed, second_year_trimmed,
+           team = paste(team, first_year_trimmed, second_year_trimmed,
                         sep = "_"),
-           gls = case_when(venue == "HomeTeam" ~ FTHG,
+           gls_gw = case_when(venue == "HomeTeam" ~ FTHG,
                            venue == "AwayTeam" ~ FTAG)) %>%
-    group_by(Team) %>%
-    mutate(Gameweek = row_number(),
-           gd_running = cumsum(gd),
-           pts_running = cumsum(pts),
-           gls_running = cumsum(gls)) %>%
-    select(date, Gameweek, Team, gd_running, pts_running, gls_running) %>%
+    group_by(team) %>%
+    mutate(gw = row_number(),
+           gd = cumsum(gd_gw),
+           pts = cumsum(pts_gw),
+           gls = cumsum(gls_gw)) %>%
+    select(date, gw, team, gd, pts, gls) %>%
 
     # For chases by date every club needs a total for every game date in the...
     # season, based on games they've played to that point. These lines...
     # create full time series for every club then fill all values downwards
     ungroup() %>%
     mutate(date = lubridate::dmy(date)) %>%
-    complete(date, nesting(Team)) %>%
-    group_by(Team) %>%
+    complete(date, nesting(team)) %>%
+    group_by(team) %>%
     fill(everything(), .direction = c("down")) %>%
     replace(is.na(.), 0) %>%
   
   # Table position for every club on every date
   group_by(date) %>%
-  arrange(desc(pts_running), desc(gd_running), desc(gls_running)) %>%
+  arrange(desc(pts), desc(gd), desc(gls)) %>%
   mutate(pos = row_number()) %>%
   arrange(date) %>%
   
   # Table position for every club on final date of season
   ungroup() %>%
-  group_by(Team) %>%
+  group_by(team) %>%
   mutate(posfinal = pos[date == max(date, na.rm = TRUE)])
 
 
@@ -104,58 +103,44 @@ all_gd_pts_deficits = all_gd_pts_evolution %>%
   # This line is different to the gameweek version
     #select(-Gameweek) %>%
     distinct() %>%
-    left_join(x = ., y = ., by = "date") %>%
+  # Join to self to get team*team combos on each date, adding prefixes as you go
+  # https://stackoverflow.com/a/50827272 and https://stackoverflow.com/a/63846870 
+    left_join(x = {.} %>% rename_with(.fn = ~ paste0("t1", .x)), 
+              y = {.} %>% rename_with(.fn = ~ paste0("t2", .x)), by = c("t1date" = "t2date")) %>%
   
-    filter(Team.x != Team.y) %>%
-    mutate(first_team_deficit = gd_running.y - gd_running.x,
-           first_team_deficit_pts = pts_running.y - pts_running.x,
-           t1gih = Gameweek.y - Gameweek.x) %>%
-    left_join(x = ., y = ., by = c("Team.x" = "Team.x", "Team.y" = "Team.y")) %>%
-    rename(first_team = Team.x, second_team = Team.y, 
-           t1gd1 = gd_running.x.x, t2gd1 = gd_running.y.x,
-           t1gd2 = gd_running.x.y, t2gd2 = gd_running.y.y,
-           t1deficit1 = first_team_deficit.x, t1deficit2 = first_team_deficit.y,
-           t1gih1 = t1gih.x, t1gih2 = t1gih.y,
-           
-           t1pts1 = pts_running.x.x, t2pts1 = pts_running.y.x,
-           t1pts2 = pts_running.x.y, t2pts2 = pts_running.y.y,
-           t1deficitpts1 = first_team_deficit_pts.x, 
-           t1deficitpts2 = first_team_deficit_pts.y,
-           
-           # This line is different to the gameweek version
-           date_1 = date.x, date_2 = date.y,
-           
-           t1gw1 = Gameweek.x.x, t2gw1 = Gameweek.y.x,
-           t1gw2 = Gameweek.x.y, t2gw2 = Gameweek.y.y,
-           
-           t1pos1 = pos.x.x, t2pos1 = pos.y.x,
-           t1pos2 = pos.x.y, t2pos2 = pos.y.y,
-           t1posfinal = posfinal.x.x, t2posfinal = posfinal.y.x) %>%
+    filter(t1team != t2team) %>%
+    mutate(t1deficit = t2gd - t1gd,
+           t1deficitpts = t2pts - t1pts,
+           t1gih = t2gw - t1gw) %>%
+  # Now join every pair to all other dates for that pair to get all team*team*date*date combos
+    left_join(x = ., y = ., 
+              by = c("t1team" = "t1team", "t2team" = "t2team"),
+              suffix = c("1", "2")) %>%
   
-    select(first_team, second_team, 
+    select(t1team, t2team, 
            # This line is different to the gameweek version
-           date_1, t1gw1, t2gw1, t1gih1, t1pos1, t2pos1,
+           t1date1, t1gw1, t2gw1, t1gih1, t1pos1, t2pos1,
            
            t1gd1, t2gd1, t1deficit1,
            t1pts1, t2pts1, t1deficitpts1,
            # This line is different to the gameweek version 
-           date_2, t1gw2, t2gw2, t1gih2, t1pos2, t2pos2,
+           t1date2, t1gw2, t2gw2, t1gih2, t1pos2, t2pos2,
            
            t1gd2, t2gd2, t1deficit2,
            t1pts2, t2pts2, t1deficitpts2,
-           t1posfinal, t2posfinal) %>%
+           t1posfinal2, t2posfinal2) %>%
     # This line is different to the gameweek version
     # Removes meaningless negative chases i.e. second date earlier than first  
-    filter(date_2 > date_1) %>%
+    filter(t1date2 > t1date1) %>%
       
     mutate(swing = t1deficit1 - t1deficit2,
            swing_pts = t1deficitpts1 - t1deficitpts2,
            chase = t1deficit1,
            chase_pts = t1deficitpts1,
            # This line is different to the gameweek version
-           total_days = date_2 - date_1,
+           total_days = t1date2 - t1date1,
            t1extragames = t1gih1 - t1gih2,
-           t1deficitposfinal = t1posfinal - t2posfinal
+           t1deficitposfinal2 = t1posfinal2 - t2posfinal2
            )
 
 
@@ -177,21 +162,20 @@ all_pts_chases = all_gd_pts_deficits%>%
 # Fill the summary summary dataframes
 #Speed these up by writing to list then binding there, for example
 # see here: https://stackoverflow.com/questions/56076736/increase-speed-of-bind-rows-within-loop-3000-dataframes
-all_gd_pts_evolution_all_seasons = all_gd_pts_evolution_all_seasons %>%
-  bind_rows(all_gd_pts_evolution)
-all_gd_chases_all_seasons = all_gd_chases_all_seasons %>%
-  bind_rows(all_gd_chases)
-all_pts_chases_all_seasons = all_pts_chases_all_seasons %>%
-  bind_rows(all_pts_chases)
+#all_gd_pts_evolution_all_seasons = append(all_gd_pts_evolution_all_seasons, list(all_gd_pts_evolution))
+all_gd_chases_all_seasons = append(all_gd_chases_all_seasons, list(all_gd_chases))
+all_pts_chases_all_seasons = append(all_pts_chases_all_seasons, list(all_pts_chases))
 
+# Keep the environment clean
+rm(all_gd_pts_evolution, all_gd_pts_deficits)
 
 }
 
-all_gd_chases_all_seasons = all_gd_chases_all_seasons %>%
-  relocate(t1posfinal, t2posfinal, .before = t1deficitposfinal)
+all_gd_chases_all_seasons = data.table::rbindlist(all_gd_chases_all_seasons) %>%
+  relocate(t1posfinal2, t2posfinal2, .before = t1deficitposfinal2)
 
-all_pts_chases_all_seasons = all_pts_chases_all_seasons %>%
-  relocate(t1posfinal, t2posfinal, .before = t1deficitposfinal)
+all_pts_chases_all_seasons = data.table::rbindlist(all_pts_chases_all_seasons) %>%
+  relocate(t1posfinal2, t2posfinal2, .before = t1deficitposfinal2)
 
 
 
